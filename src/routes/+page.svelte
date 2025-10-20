@@ -22,7 +22,7 @@
 
 	// Pro mode (multipass grading)
 	let proMode = $state<boolean>(false);
-	let numRuns = $state<number>(3);
+	let numRuns = $state<number>(5);
 
 	// Answer sheet images
 	let capturedImages = $state<string[]>([]);

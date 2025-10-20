@@ -58,7 +58,11 @@
 		<Heading tag="h3" class="mb-3">Question-by-Question Results:</Heading>
 		<div class="space-y-4">
 			{#each gradingResult.results as result, index (result.questionNumber)}
-				<QuestionResultCard {result} confidence={gradingResult.confidences?.[index]} />
+				<QuestionResultCard
+					{result}
+					confidence={gradingResult.confidences?.[index]}
+					allResults={gradingResult.allResults?.map((r) => r.results[index]).filter(Boolean)}
+				/>
 			{/each}
 		</div>
 	</Card>
