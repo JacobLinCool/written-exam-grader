@@ -3,7 +3,12 @@ import { type GenerateContentResponseUsageMetadata, GoogleGenAI } from '@google/
 import { toGeminiSchema } from 'gemini-zod';
 import { z } from 'zod/v3';
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({
+	apiKey: env.GEMINI_API_KEY,
+	httpOptions: {
+		baseUrl: env.GEMINI_API_BASE_URL // Optional, only set if using a custom base URL
+	}
+});
 
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
 
