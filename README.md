@@ -51,6 +51,6 @@ pnpm preview
 ## Technical Stack
 
 - **Framework**: SvelteKit 2 with Svelte 5
-- **Styling**: Tailwind CSS 4
+- **Styling**: Flowbite-Svelte + Lucide Icons
 - **AI**: Google Gemini
 - **Type Safety**: TypeScript + Zod v3

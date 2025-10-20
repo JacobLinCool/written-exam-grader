@@ -1,0 +1,59 @@
+<script lang="ts">
+	import { Button, Card, Alert, Heading, P } from 'flowbite-svelte';
+	import { Plus } from '@lucide/svelte';
+	import type { GradingResult, PricingInfo } from '$lib/types';
+	import QuestionResultCard from './QuestionResultCard.svelte';
+	import PricingCard from './PricingCard.svelte';
+
+	type Props = {
+		gradingResult: GradingResult;
+		pricing: PricingInfo | null;
+		onNext: () => void;
+	};
+
+	let { gradingResult, pricing, onNext }: Props = $props();
+</script>
+
+<div class="space-y-4">
+	<Card size="xl" class="p-4">
+		<div class="mb-4 flex items-center justify-between">
+			<Heading tag="h2">Grading Results</Heading>
+			<Button onclick={onNext}>
+				<Plus class="mr-2 h-4 w-4" />
+				Grade Next Student
+			</Button>
+		</div>
+
+		<Alert color="blue" class="mb-6">
+			<span class="font-semibold">Student:</span>
+			<span class="ml-2">{gradingResult.studentId}</span>
+		</Alert>
+
+		<div
+			class="mb-6 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center text-white shadow-lg"
+		>
+			<div class="text-5xl font-bold">
+				{gradingResult.totalScore} / {gradingResult.maxPossibleScore}
+			</div>
+			<div class="mt-2 text-lg">
+				{Math.round((gradingResult.totalScore / gradingResult.maxPossibleScore) * 100)}%
+			</div>
+		</div>
+
+		{#if pricing}
+			<PricingCard {pricing} />
+		{/if}
+
+		<Alert color="blue" class="mb-6">
+			<Heading tag="h3" class="mb-2 text-base">Overall Comments:</Heading>
+			<P class="text-gray-700">{gradingResult.comments}</P>
+		</Alert>
+
+		<Heading tag="h3" class="mb-3">Question-by-Question Results:</Heading>
+		<div class="space-y-4">
+			{#each gradingResult.results as result (result.questionNumber)}
+				<QuestionResultCard {result} />
+			{/each}
+		</div>
+	</Card>
+</div>
