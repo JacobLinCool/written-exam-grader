@@ -137,10 +137,14 @@ export async function gradeAnswerSheetMultipass(
 		totalTokenCount: 0
 	};
 
-	// Run grading multiple times
-	for (let i = 0; i < numRuns; i++) {
-		console.log(`Grading run ${i + 1} of ${numRuns}...`);
+	// Run grading multiple times with bounded concurrency using worker loops.
+	const concurrency = 3;
+
+	const runGrading = async (runIndex: number) => {
+		console.log(`Grading run ${runIndex + 1} of ${numRuns}...`);
 		const { result, usage } = await gradeAnswerSheet(questionSheetBase64, imagesBase64);
+
+		// push result
 		allResults.push(result);
 
 		// Accumulate usage
@@ -149,7 +153,25 @@ export async function gradeAnswerSheetMultipass(
 		totalUsage.candidatesTokenCount =
 			(totalUsage.candidatesTokenCount || 0) + (usage.candidatesTokenCount || 0);
 		totalUsage.totalTokenCount = (totalUsage.totalTokenCount || 0) + (usage.totalTokenCount || 0);
-	}
+	};
+
+	// Shared index for work distribution
+	let nextIndex = 0;
+	const workers = Array.from({ length: Math.min(concurrency, numRuns) }, async () => {
+		while (true) {
+			const i = nextIndex++;
+			if (i >= numRuns) break;
+			try {
+				await runGrading(i);
+			} catch (err) {
+				console.error(`Grading run ${i + 1} failed:`, err);
+				// rethrow so Promise.all below rejects
+				throw err;
+			}
+		}
+	});
+
+	await Promise.all(workers);
 
 	// Group results by question number
 	const questionMap = new Map<number, QuestionResult[]>();
