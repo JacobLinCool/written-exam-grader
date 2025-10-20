@@ -11,6 +11,7 @@ const ai = new GoogleGenAI({
 });
 
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
+const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
 
 const QuestionResult = z.object({
 	questionNumber: z.number().describe('The question number'),
@@ -143,8 +144,6 @@ export async function gradeAnswerSheetMultipass(
 	};
 
 	// Run grading multiple times with bounded concurrency using worker loops.
-	const concurrency = 3;
-
 	const runGrading = async (runIndex: number) => {
 		console.log(`Grading run ${runIndex + 1} of ${numRuns}...`);
 		const { result, usage } = await gradeAnswerSheet(questionSheetBase64, imagesBase64);
@@ -162,7 +161,7 @@ export async function gradeAnswerSheetMultipass(
 
 	// Shared index for work distribution
 	let nextIndex = 0;
-	const workers = Array.from({ length: Math.min(concurrency, numRuns) }, async () => {
+	const workers = Array.from({ length: Math.min(AI_GRADER_PRO_CONCURRENCY, numRuns) }, async () => {
 		while (true) {
 			const i = nextIndex++;
 			if (i >= numRuns) break;
