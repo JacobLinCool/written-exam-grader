@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { Badge, Card, Heading, P } from 'flowbite-svelte';
-	import { Check, X } from '@lucide/svelte';
+	import { Check, X, Target } from '@lucide/svelte';
 	import type { QuestionResult } from '$lib/types';
 
 	type Props = {
 		result: QuestionResult;
+		confidence?: number;
 	};
 
-	let { result }: Props = $props();
+	let { result, confidence }: Props = $props();
+
+	function getConfidenceColor(conf: number) {
+		if (conf >= 0.8) return 'green';
+		if (conf >= 0.6) return 'yellow';
+		return 'red';
+	}
 </script>
 
 <Card
@@ -22,6 +29,12 @@
 			<Badge color="blue" large>
 				{result.earnedScore} / {result.maxScore} pts
 			</Badge>
+			{#if confidence !== undefined}
+				<Badge color={getConfidenceColor(confidence)} large>
+					<Target class="mr-1 h-3 w-3" />
+					{Math.round(confidence * 100)}% confidence
+				</Badge>
+			{/if}
 			<Badge color={result.isCorrect ? 'green' : 'red'} large>
 				{#if result.isCorrect}
 					<Check class="mr-1 h-3 w-3" />

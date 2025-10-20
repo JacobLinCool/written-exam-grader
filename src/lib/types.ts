@@ -14,6 +14,14 @@ export type GradingResult = {
 	maxPossibleScore: number;
 	comments: string;
 	studentId: string;
+	confidences?: number[];
+	runs?: number;
+	allResults?: {
+		results: QuestionResult[];
+		totalScore: number;
+		maxPossibleScore: number;
+		comments: string;
+	}[];
 };
 
 export type SessionResult = GradingResult & {

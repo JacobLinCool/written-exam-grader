@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button, Card, Alert, Heading, P } from 'flowbite-svelte';
-	import { Plus } from '@lucide/svelte';
+	import { Button, Card, Alert, Heading, P, Badge } from 'flowbite-svelte';
+	import { Plus, Sparkles } from '@lucide/svelte';
 	import type { GradingResult, PricingInfo } from '$lib/types';
 	import QuestionResultCard from './QuestionResultCard.svelte';
 	import PricingCard from './PricingCard.svelte';
@@ -27,6 +27,12 @@
 		<Alert color="blue" class="mb-6">
 			<span class="font-semibold">Student:</span>
 			<span class="ml-2">{gradingResult.studentId}</span>
+			{#if gradingResult.runs}
+				<Badge color="purple" class="ml-3">
+					<Sparkles class="mr-1 h-3 w-3" />
+					Pro Mode ({gradingResult.runs} runs)
+				</Badge>
+			{/if}
 		</Alert>
 
 		<div
@@ -51,8 +57,8 @@
 
 		<Heading tag="h3" class="mb-3">Question-by-Question Results:</Heading>
 		<div class="space-y-4">
-			{#each gradingResult.results as result (result.questionNumber)}
-				<QuestionResultCard {result} />
+			{#each gradingResult.results as result, index (result.questionNumber)}
+				<QuestionResultCard {result} confidence={gradingResult.confidences?.[index]} />
 			{/each}
 		</div>
 	</Card>

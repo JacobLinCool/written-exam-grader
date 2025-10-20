@@ -1,9 +1,9 @@
-import { gradeAnswerSheet } from '$lib/server/grading';
+import { gradeAnswerSheet, gradeAnswerSheetMultipass } from '$lib/server/grading';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { questionSheet, studentId, images } = await request.json();
+		const { questionSheet, studentId, images, proMode, numRuns } = await request.json();
 
 		if (!questionSheet || typeof questionSheet !== 'string') {
 			return json({ error: 'Missing or invalid questionSheet (PDF base64)' }, { status: 400 });
@@ -25,8 +25,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			image.replace(/^data:image\/\w+;base64,/, '')
 		);
 
-		const result = await gradeAnswerSheet(questionSheetBase64, base64Images);
+		// Use multipass grading if Pro mode is enabled
+		const result = proMode
+			? await gradeAnswerSheetMultipass(questionSheetBase64, base64Images, numRuns || 3)
+			: await gradeAnswerSheet(questionSheetBase64, base64Images);
 
+		console.log('Grading usage:', result.usage);
 		return json(result);
 	} catch (error) {
 		console.error('Grading error:', error);

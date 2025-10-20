@@ -20,6 +20,10 @@
 	// Student info
 	let studentId = $state<string>('');
 
+	// Pro mode (multipass grading)
+	let proMode = $state<boolean>(false);
+	let numRuns = $state<number>(3);
+
 	// Answer sheet images
 	let capturedImages = $state<string[]>([]);
 
@@ -174,17 +178,25 @@
 				body: JSON.stringify({
 					questionSheet,
 					studentId: studentId.trim(),
-					images: capturedImages
+					images: capturedImages,
+					proMode,
+					numRuns
 				})
 			});
 
-			const data = (await response.json()) as GradingResponse;
+			const data = (await response.json()) as any;
 
 			if (!response.ok) {
 				throw new Error('Failed to grade answer sheet');
 			}
 
-			gradingResult = { ...data.result, studentId: studentId.trim() };
+			gradingResult = {
+				...data.result,
+				studentId: studentId.trim(),
+				confidences: data.confidences,
+				runs: data.runs,
+				allResults: data.results
+			};
 
 			// Calculate pricing from usage metadata and ceil to the first digit
 			try {
@@ -267,6 +279,8 @@
 				{showCamera}
 				{isGrading}
 				{error}
+				{proMode}
+				{numRuns}
 				bind:videoElement
 				bind:canvasElement
 				bind:answerSheetFileInput
@@ -278,6 +292,8 @@
 				onRemoveImage={removeImage}
 				onClearAll={retakePhotos}
 				onGrade={gradeAnswerSheet}
+				onProModeChange={(value) => (proMode = value)}
+				onNumRunsChange={(value) => (numRuns = value)}
 			/>
 		{:else if currentStep === 'result' && gradingResult}
 			<GradingResultsView {gradingResult} pricing={lastPricing} onNext={resetToStudentInput} />
