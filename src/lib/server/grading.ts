@@ -109,6 +109,16 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 	}
 
 	const result = GradingResult.parse(JSON.parse(gradingResponse.text));
+
+	result.maxPossibleScore = result.results.reduce(
+		(acc, curr) => acc + curr.maxScore,
+		0
+	);
+	result.totalScore = result.results.reduce(
+		(acc, curr) => acc + curr.earnedScore,
+		0
+	);
+
 	return {
 		result,
 		usage: gradingResponse.usageMetadata
