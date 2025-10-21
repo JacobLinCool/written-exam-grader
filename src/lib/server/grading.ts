@@ -157,6 +157,7 @@ export async function gradeAnswerSheetMultipass(
 		totalUsage.candidatesTokenCount =
 			(totalUsage.candidatesTokenCount || 0) + (usage.candidatesTokenCount || 0);
 		totalUsage.totalTokenCount = (totalUsage.totalTokenCount || 0) + (usage.totalTokenCount || 0);
+		console.log(`Completed grading run ${runIndex + 1}`);
 	};
 
 	// Shared index for work distribution
@@ -166,6 +167,10 @@ export async function gradeAnswerSheetMultipass(
 			const i = nextIndex++;
 			if (i >= numRuns) break;
 			try {
+				// for the first batch, add delay for context caching
+				if (i > 0 && i < AI_GRADER_PRO_CONCURRENCY) {
+					await new Promise((res) => setTimeout(res, 15_000));
+				}
 				await runGrading(i);
 			} catch (err) {
 				console.error(`Grading run ${i + 1} failed:`, err);
