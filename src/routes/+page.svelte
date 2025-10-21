@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { GradingResponse } from '$lib/server/grading';
 	import type { GradingResult, SessionResult, PricingInfo } from '$lib/types';
 	import { calculatePricing } from '$lib/pricing';
 	import { onMount } from 'svelte';
@@ -170,15 +169,22 @@
 		gradingResult = null;
 
 		try {
+			// Remove data URL prefix if present from question sheet
+			const questionSheetBase64 = questionSheet.replace(/^data:application\/pdf;base64,/, '');
+
+			// Remove data URL prefix if present from all images
+			const imagesBase64 = capturedImages.map((image: string) =>
+				image.replace(/^data:image\/\w+;base64,/, '')
+			);
+
 			const response = await fetch('/api/grade', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					questionSheet,
-					studentId: studentId.trim(),
-					images: capturedImages,
+					questionSheetBase64,
+					imagesBase64,
 					proMode,
 					numRuns
 				})

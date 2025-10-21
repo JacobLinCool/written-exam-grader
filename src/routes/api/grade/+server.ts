@@ -1,16 +1,35 @@
-import { gradeAnswerSheet, gradeAnswerSheetMultipass } from '$lib/server/grading';
+import { env } from '$env/dynamic/private';
+import { GoogleGenAIPool } from '$lib/genai-pool';
+import { WrittenExamGrader } from '$lib/grader';
+import { GoogleGenAI } from '@google/genai';
 import { json, type RequestHandler } from '@sveltejs/kit';
+
+const pool = new GoogleGenAIPool(GoogleGenAI);
+
+const keys = env.GEMINI_API_KEY.split(',')
+	.map((k) => k.trim())
+	.filter((k) => k);
+for (const key of keys) {
+	pool.add({
+		apiKey: key,
+		httpOptions: {
+			baseUrl: env.GEMINI_API_BASE_URL // Work with custom base URL if needed
+		}
+	});
+}
+
+const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
+const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
+const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
+
+const grader = new WrittenExamGrader(pool);
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { questionSheet, studentId, images, proMode } = await request.json();
+		const { questionSheet, images, proMode } = await request.json();
 
 		if (!questionSheet || typeof questionSheet !== 'string') {
 			return json({ error: 'Missing or invalid questionSheet (PDF base64)' }, { status: 400 });
-		}
-
-		if (!studentId || typeof studentId !== 'string' || !studentId.trim()) {
-			return json({ error: 'Missing or invalid studentId' }, { status: 400 });
 		}
 
 		if (!images || !Array.isArray(images) || images.length === 0) {
@@ -21,14 +40,24 @@ export const POST: RequestHandler = async ({ request }) => {
 		const questionSheetBase64 = questionSheet.replace(/^data:application\/pdf;base64,/, '');
 
 		// Remove data URL prefix if present from all images
-		const base64Images = images.map((image: string) =>
+		const imagesBase64 = images.map((image: string) =>
 			image.replace(/^data:image\/\w+;base64,/, '')
 		);
 
 		// Use multipass grading if Pro mode is enabled
 		const result = proMode
-			? await gradeAnswerSheetMultipass(questionSheetBase64, base64Images, 5)
-			: await gradeAnswerSheet(questionSheetBase64, base64Images);
+			? await grader.gradeMultipass({
+					questionSheetBase64,
+					imagesBase64,
+					model: AI_GRADER_MODEL,
+					numRuns: AI_GRADER_PRO_RUNS,
+					concurrency: AI_GRADER_PRO_CONCURRENCY
+				})
+			: await grader.grade({
+					questionSheetBase64,
+					imagesBase64,
+					model: AI_GRADER_MODEL
+				});
 
 		console.log('Grading usage:', result.usage);
 		return json(result);
