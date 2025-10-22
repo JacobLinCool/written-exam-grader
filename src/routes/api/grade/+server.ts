@@ -18,6 +18,7 @@ for (const key of keys) {
 	});
 }
 
+const AI_GRADER_SERVER_ENABLED = env.AI_GRADER_SERVER_ENABLED === 'true' || false;
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
 const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
 const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
@@ -25,6 +26,10 @@ const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
 const grader = new WrittenExamGrader(pool);
 
 export const POST: RequestHandler = async ({ request }) => {
+	if (!AI_GRADER_SERVER_ENABLED) {
+		return json({ error: 'AI grading server mode is disabled' }, { status: 403 });
+	}
+
 	try {
 		const { questionSheet, images, proMode } = await request.json();
 

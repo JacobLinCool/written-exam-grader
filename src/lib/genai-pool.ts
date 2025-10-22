@@ -34,7 +34,11 @@ export class GoogleGenAIPool {
 				...opt.httpOptions,
 				headers: {
 					...opt.httpOptions?.headers,
-					'cf-aig-metadata': JSON.stringify({ id: genaiId })
+					'cf-aig-metadata': JSON.stringify({
+						id: genaiId,
+						service: 'written-exam-grader',
+						byok: false
+					})
 				}
 			}
 		});

@@ -1,3 +1,4 @@
+export { default as ApiKeyManager } from './ApiKeyManager.svelte';
 export { default as AppHeader } from './AppHeader.svelte';
 export { default as CameraView } from './CameraView.svelte';
 export { default as CaptureAnswerSheet } from './CaptureAnswerSheet.svelte';
