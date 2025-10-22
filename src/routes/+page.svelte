@@ -31,7 +31,7 @@
 	<div class="container mx-auto px-4 py-16 md:py-24">
 		<div class="text-center">
 			<!-- Main Title -->
-			<div class="animate-fade-in mb-8">
+			<div class="mb-8">
 				<div class="mb-6 inline-flex items-center transition-all duration-300 hover:scale-105">
 					<Badge color="red" large class="px-4 py-2">
 						<Sparkles class="mr-2 h-4 w-4" />
