@@ -279,7 +279,7 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 		options?: { retries?: number; baseDelayMs?: number; maxDelayMs?: number }
 	) {
 		const retries = options?.retries ?? 3;
-		const baseDelayMs = options?.baseDelayMs ?? 5_000;
+		const baseDelayMs = options?.baseDelayMs ?? 2_000;
 		const maxDelayMs = options?.maxDelayMs ?? 600_000;
 
 		let attempt = 0;

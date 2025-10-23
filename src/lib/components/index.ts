@@ -2,6 +2,7 @@ export { default as ApiKeyManager } from './ApiKeyManager.svelte';
 export { default as AppHeader } from './AppHeader.svelte';
 export { default as CameraView } from './CameraView.svelte';
 export { default as CaptureAnswerSheet } from './CaptureAnswerSheet.svelte';
+export { default as GradingQueue } from './GradingQueue.svelte';
 export { default as GradingResultsView } from './GradingResultsView.svelte';
 export { default as ImageGallery } from './ImageGallery.svelte';
 export { default as PricingCard } from './PricingCard.svelte';

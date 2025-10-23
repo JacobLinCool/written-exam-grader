@@ -9,21 +9,11 @@
 		UploadQuestionSheet,
 		StudentInfoStep,
 		CaptureAnswerSheet,
+		GradingQueue,
 		GradingResultsView
 	} from '$lib/components';
-	import { Key, Cloud, LoaderCircle, CircleCheckBig, CircleX } from '@lucide/svelte';
-
-	// Grading job type
-	type GradingJob = {
-		id: string;
-		studentId: string;
-		images: string[];
-		status: 'pending' | 'grading' | 'completed' | 'error';
-		result?: GradingResult;
-		pricing?: PricingInfo | null;
-		error?: string;
-		timestamp: number;
-	};
+	import type { GradingJob } from '$lib/components/GradingQueue.svelte';
+	import { Key, Cloud } from '@lucide/svelte';
 
 	// Step tracking
 	let currentStep = $state<'upload' | 'student' | 'capture' | 'result'>('upload');
@@ -219,6 +209,19 @@
 		gradeJob(jobId, currentStudentId, currentImages);
 	}
 
+	function retryJob(job: GradingJob) {
+		// Reset job status and clear error
+		const jobIndex = gradingJobs.findIndex((j) => j.id === job.id);
+		if (jobIndex === -1) return;
+
+		gradingJobs[jobIndex].status = 'pending';
+		gradingJobs[jobIndex].error = undefined;
+		gradingJobs = [...gradingJobs];
+
+		// Retry grading
+		gradeJob(job.id, job.studentId, job.images);
+	}
+
 	async function gradeJob(jobId: string, studentIdValue: string, images: string[]) {
 		// Update job status
 		const jobIndex = gradingJobs.findIndex((j) => j.id === jobId);
@@ -397,57 +400,7 @@
 		</div>
 
 		<!-- Grading Queue Status -->
-		{#if gradingJobs.length > 0}
-			<div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<h3 class="mb-3 text-lg font-semibold text-gray-900">Grading Queue</h3>
-				<div class="space-y-2">
-					{#each gradingJobs as job (job.id)}
-						<div
-							class="flex items-center justify-between rounded-lg border p-3 {job.status ===
-							'completed'
-								? 'border-green-200 bg-green-50'
-								: job.status === 'error'
-									? 'border-red-200 bg-red-50'
-									: 'border-blue-200 bg-blue-50'}"
-						>
-							<div class="flex items-center gap-3">
-								{#if job.status === 'grading' || job.status === 'pending'}
-									<LoaderCircle class="h-5 w-5 animate-spin text-blue-600" />
-								{:else if job.status === 'completed'}
-									<CircleCheckBig class="h-5 w-5 text-green-600" />
-								{:else if job.status === 'error'}
-									<CircleX class="h-5 w-5 text-red-600" />
-								{/if}
-								<div>
-									<div class="font-medium text-gray-900">{job.studentId}</div>
-									<div class="text-sm text-gray-600">
-										{job.images.length}
-										{job.images.length === 1 ? 'image' : 'images'}
-										{#if job.status === 'grading'}
-											- Grading...
-										{:else if job.status === 'pending'}
-											- Pending...
-										{:else if job.status === 'completed' && job.result}
-											- Score: {job.result.totalScore}/{job.result.maxPossibleScore}
-										{:else if job.status === 'error'}
-											- Error: {job.error}
-										{/if}
-									</div>
-								</div>
-							</div>
-							{#if job.status === 'completed'}
-								<button
-									onclick={() => viewJobResult(job)}
-									class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-								>
-									View Result
-								</button>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
+		<GradingQueue jobs={gradingJobs} onViewResult={viewJobResult} onRetry={retryJob} />
 
 		{#if currentStep === 'upload'}
 			<UploadQuestionSheet {error} onUpload={handleQuestionSheetUpload} />
