@@ -12,6 +12,7 @@
 		pricing?: PricingInfo | null;
 		error?: string;
 		timestamp: number;
+		progress?: { current: number; total: number };
 	};
 
 	interface Props {
@@ -50,6 +51,9 @@
 								{job.images.length === 1 ? 'image' : 'images'}
 								{#if job.status === 'grading'}
 									- Grading...
+									{#if job.progress}
+										({job.progress.current}/{job.progress.total} runs)
+									{/if}
 								{:else if job.status === 'pending'}
 									- Pending...
 								{:else if job.status === 'completed' && job.result}

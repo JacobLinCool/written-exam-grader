@@ -13,6 +13,7 @@
 		GradingResultsView
 	} from '$lib/components';
 	import type { GradingJob } from '$lib/components/GradingQueue.svelte';
+	import { gradeWithSSE } from '$lib/sse-client';
 	import { Key, Cloud } from '@lucide/svelte';
 
 	// Step tracking
@@ -240,43 +241,68 @@
 				image.replace(/^data:image\/\w+;base64,/, '')
 			);
 
-			let data: any;
+			let resultData: any;
 
-			// Server-side grading
-			const response = await fetch('/api/grade', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(useBYOKMode && clientApiKeyManager.apiKey
-						? { 'X-GOOG-API-KEY': clientApiKeyManager.apiKey }
-						: {})
-				},
-				body: JSON.stringify({
+			// Use SSE for grading
+			await gradeWithSSE(
+				'/api/grade',
+				{
 					questionSheetBase64,
 					imagesBase64,
 					proMode,
 					numRuns
-				})
-			});
+				},
+				{
+					...(useBYOKMode && clientApiKeyManager.apiKey
+						? { 'X-GOOG-API-KEY': clientApiKeyManager.apiKey }
+						: {})
+				},
+				{
+					onHeartbeat: (data) => {
+						console.log('Heartbeat:', new Date(data.timestamp).toISOString());
+					},
+					onProgress: (data) => {
+						console.log('Progress:', data);
+						// Update the UI to show progress
+						const currentJobIndex = gradingJobs.findIndex((j) => j.id === jobId);
+						if (currentJobIndex !== -1 && data.type === 'run-completed') {
+							gradingJobs[currentJobIndex].progress = {
+								current: data.current,
+								total: data.total
+							};
+							gradingJobs = [...gradingJobs];
+							console.log(`Run ${data.current} of ${data.total} completed`);
+						}
+					},
+					onResult: (data) => {
+						console.log('Result received');
+						resultData = data;
+					},
+					onError: (data) => {
+						throw new Error(data.message);
+					},
+					onDone: () => {
+						console.log('Grading completed');
+					}
+				}
+			);
 
-			if (!response.ok) {
-				throw new Error('Failed to grade answer sheet');
+			if (!resultData) {
+				throw new Error('No result data received');
 			}
 
-			data = await response.json();
-
 			const result: GradingResult = {
-				...data.result,
+				...resultData.result,
 				studentId: studentIdValue,
-				confidences: data.confidences,
-				runs: data.runs,
-				allResults: data.results
+				confidences: resultData.confidences,
+				runs: resultData.runs,
+				allResults: resultData.results
 			};
 
 			// Calculate pricing from usage metadata
 			let pricing: PricingInfo | null = null;
 			try {
-				const pricingCalc = calculatePricing(data.usage);
+				const pricingCalc = calculatePricing(resultData.usage);
 				const ceilToFirst = (n: number) => Math.ceil(n * 10) / 10;
 				const inputCost = ceilToFirst(pricingCalc.inputCost) + ceilToFirst(pricingCalc.cachedCost);
 				const outputCost = ceilToFirst(pricingCalc.outputCost);
@@ -303,7 +329,7 @@
 			allResults = [
 				...allResults,
 				{
-					...data.result,
+					...resultData.result,
 					studentId: studentIdValue,
 					timestamp: new Date().toISOString(),
 					pricing

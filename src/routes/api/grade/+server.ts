@@ -65,28 +65,70 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing images. Images must be a non-empty array.' }, { status: 400 });
 		}
 
-		// Use multipass grading if Pro mode is enabled
-		const result = proMode
-			? await grader.gradeMultipass({
-					questionSheetBase64,
-					imagesBase64,
-					model: AI_GRADER_MODEL,
-					numRuns: AI_GRADER_PRO_RUNS,
-					concurrency: AI_GRADER_PRO_CONCURRENCY
-				})
-			: await grader.grade({
-					questionSheetBase64,
-					imagesBase64,
-					model: AI_GRADER_MODEL
-				});
+		// Create SSE stream
+		const stream = new ReadableStream({
+			async start(controller) {
+				const encoder = new TextEncoder();
 
-		console.log('Grading usage:', result.usage);
-		return json(result);
+				// Helper to send SSE message
+				const sendEvent = (event: string, data: unknown) => {
+					const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+					controller.enqueue(encoder.encode(message));
+				};
+
+				// Start heartbeat to keep connection alive
+				const heartbeatInterval = setInterval(() => {
+					sendEvent('heartbeat', { timestamp: Date.now() });
+				}, 10000);
+
+				try {
+					// Use multipass grading if Pro mode is enabled
+					const result = proMode
+						? await grader.gradeMultipass({
+								questionSheetBase64,
+								imagesBase64,
+								model: AI_GRADER_MODEL,
+								numRuns: AI_GRADER_PRO_RUNS,
+								concurrency: AI_GRADER_PRO_CONCURRENCY,
+								onProgress: (progress) => {
+									sendEvent('progress', progress);
+								}
+							})
+						: await grader.grade({
+								questionSheetBase64,
+								imagesBase64,
+								model: AI_GRADER_MODEL
+							});
+
+					console.log('Grading usage:', result.usage);
+
+					// Send final result
+					sendEvent('result', result);
+					sendEvent('done', {});
+				} catch (error) {
+					console.error('Grading error:', error);
+					sendEvent('error', {
+						message: error instanceof Error ? error.message : 'Failed to grade answer sheet'
+					});
+				} finally {
+					clearInterval(heartbeatInterval);
+					controller.close();
+				}
+			}
+		});
+
+		return new Response(stream, {
+			headers: {
+				'Content-Type': 'text/event-stream',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive'
+			}
+		});
 	} catch (error) {
-		console.error('Grading error:', error);
+		console.error('Request parsing error:', error);
 		return json(
-			{ error: error instanceof Error ? error.message : 'Failed to grade answer sheet' },
-			{ status: 500 }
+			{ error: error instanceof Error ? error.message : 'Failed to parse request' },
+			{ status: 400 }
 		);
 	}
 };

@@ -61,6 +61,11 @@ export interface WrittenExamGradingOptions {
 export interface MultipassWrittenExamGradingOptions extends WrittenExamGradingOptions {
 	numRuns: number;
 	concurrency: number;
+	onProgress?: (progress: {
+		type: 'grading' | 'run-completed';
+		current: number;
+		total: number;
+	}) => void;
 }
 
 export interface IWrittenExamGrader {
@@ -158,6 +163,7 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 		const totalUsage: GenerateContentResponseUsageMetadata = {
 			promptTokenCount: 0,
 			candidatesTokenCount: 0,
+			thoughtsTokenCount: 0,
 			totalTokenCount: 0
 		};
 
@@ -174,8 +180,19 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 				(totalUsage.promptTokenCount || 0) + (usage.promptTokenCount || 0);
 			totalUsage.candidatesTokenCount =
 				(totalUsage.candidatesTokenCount || 0) + (usage.candidatesTokenCount || 0);
+			totalUsage.thoughtsTokenCount =
+				(totalUsage.thoughtsTokenCount || 0) + (usage.thoughtsTokenCount || 0);
 			totalUsage.totalTokenCount = (totalUsage.totalTokenCount || 0) + (usage.totalTokenCount || 0);
 			console.log(`Completed grading run ${runIndex + 1}`);
+
+			// Report progress
+			if (options.onProgress) {
+				options.onProgress({
+					type: 'run-completed',
+					current: allResults.length,
+					total: options.numRuns
+				});
+			}
 		};
 
 		// Shared index for work distribution
