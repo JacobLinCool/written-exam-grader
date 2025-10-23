@@ -42,6 +42,7 @@
 	let isGrading = $state(false);
 	let gradingResult = $state<GradingResult | null>(null);
 	let lastPricing = $state<PricingInfo | null>(null);
+	let currentAnswerSheetImages = $state<string[]>([]);
 	let error = $state<string | null>(null);
 
 	// All session results
@@ -346,6 +347,7 @@
 		if (job.result) {
 			gradingResult = job.result;
 			lastPricing = job.pricing || null;
+			currentAnswerSheetImages = job.images;
 			currentStep = 'result';
 		}
 	}
@@ -452,7 +454,12 @@
 				</div>
 			</div>
 		{:else if currentStep === 'result' && gradingResult}
-			<GradingResultsView {gradingResult} pricing={lastPricing} onNext={resetToStudentInput} />
+			<GradingResultsView
+				{gradingResult}
+				pricing={lastPricing}
+				answerSheetImages={currentAnswerSheetImages}
+				onNext={resetToStudentInput}
+			/>
 		{/if}
 	</div>
 </div>

@@ -4,14 +4,28 @@
 	import type { GradingResult, PricingInfo } from '$lib/types';
 	import QuestionResultCard from './QuestionResultCard.svelte';
 	import PricingCard from './PricingCard.svelte';
+	import AnswerSheetViewer from './AnswerSheetViewer.svelte';
 
 	type Props = {
 		gradingResult: GradingResult;
 		pricing: PricingInfo | null;
+		answerSheetImages?: string[];
 		onNext: () => void;
 	};
 
-	let { gradingResult, pricing, onNext }: Props = $props();
+	let { gradingResult, pricing, answerSheetImages, onNext }: Props = $props();
+	let highlightedQuestion = $state<number | undefined>(undefined);
+
+	function handleViewPosition(questionNumber: number, page: number, box2d: number[]) {
+		highlightedQuestion = questionNumber;
+		// Scroll to the answer sheet viewer
+		setTimeout(() => {
+			const viewer = document.getElementById('answer-sheet-viewer');
+			if (viewer) {
+				viewer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		}, 100);
+	}
 </script>
 
 <div class="space-y-4">
@@ -55,6 +69,16 @@
 			<P class="text-gray-700">{gradingResult.comments}</P>
 		</Alert>
 
+		{#if answerSheetImages && answerSheetImages.length > 0}
+			<div id="answer-sheet-viewer" class="mb-6">
+				<AnswerSheetViewer
+					images={answerSheetImages}
+					results={gradingResult.results}
+					bind:highlightedQuestion
+				/>
+			</div>
+		{/if}
+
 		<Heading tag="h3" class="mb-3">Question-by-Question Results:</Heading>
 		<div class="space-y-4">
 			{#each gradingResult.results as result, index (result.questionNumber)}
@@ -62,6 +86,7 @@
 					{result}
 					confidence={gradingResult.confidences?.[index]}
 					allResults={gradingResult.allResults?.map((r) => r.results[index]).filter(Boolean)}
+					onViewPosition={(page, box2d) => handleViewPosition(result.questionNumber, page, box2d)}
 				/>
 			{/each}
 		</div>

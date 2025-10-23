@@ -18,7 +18,17 @@ const QuestionResult = z.object({
 		.describe('The maximum score for this question as shown in the question sheet'),
 	earnedScore: z
 		.number()
-		.describe('The score the student earned for this question (can be partial credit)')
+		.describe('The score the student earned for this question (can be partial credit)'),
+	position: z
+		.object({
+			page: z.number().describe('The page number where the answer is located (1-based)'),
+			box2d: z
+				.array(z.number())
+				.describe('The bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000.')
+		})
+		.describe(
+			'The position of the student answer on the answer sheet if exists (if not exists, fill with -1).'
+		)
 });
 
 const GradingResult = z.object({

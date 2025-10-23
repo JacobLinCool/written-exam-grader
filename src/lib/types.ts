@@ -6,6 +6,10 @@ export type QuestionResult = {
 	correctAnswer: string;
 	maxScore: number;
 	earnedScore: number;
+	position: {
+		page: number;
+		box2d: number[];
+	};
 };
 
 export type GradingResult = {

@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { Badge, Card, Heading, P, Button } from 'flowbite-svelte';
-	import { Check, X, Target, ChevronDown, ChevronUp } from '@lucide/svelte';
+	import { Check, X, Target, ChevronDown, ChevronUp, MapPin } from '@lucide/svelte';
 	import type { QuestionResult } from '$lib/types';
 
 	type Props = {
 		result: QuestionResult;
 		confidence?: number;
 		allResults?: QuestionResult[];
+		onViewPosition?: (page: number, box2d: number[]) => void;
 	};
 
-	let { result, confidence, allResults }: Props = $props();
+	let { result, confidence, allResults, onViewPosition }: Props = $props();
 	let isExpanded = $state(false);
 
 	function getConfidenceColor(conf: number) {
@@ -20,6 +21,12 @@
 
 	function toggleExpanded() {
 		isExpanded = !isExpanded;
+	}
+
+	function handleViewPosition() {
+		if (onViewPosition && result.position) {
+			onViewPosition(result.position.page, result.position.box2d);
+		}
 	}
 </script>
 
@@ -66,6 +73,21 @@
 	</button>
 
 	<div class="space-y-2 text-sm">
+		{#if result.position}
+			<div class="mb-3 flex items-center gap-2 rounded-lg bg-gray-100 p-2">
+				<MapPin class="h-4 w-4 text-blue-600" />
+				<span class="text-xs text-gray-600">
+					Page {result.position.page} • Position: [{result.position.box2d
+						.map((v) => Math.round(v))
+						.join(', ')}]
+				</span>
+				{#if onViewPosition}
+					<Button size="xs" color="blue" class="ml-auto" onclick={handleViewPosition}>
+						View on Sheet
+					</Button>
+				{/if}
+			</div>
+		{/if}
 		<div>
 			<span class="font-semibold text-gray-700">Student's Answer:</span>
 			<P class="text-gray-600">{result.studentAnswer}</P>
