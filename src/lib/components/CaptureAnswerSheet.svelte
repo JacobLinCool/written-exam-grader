@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Card, Alert, Heading, P, Spinner, Toggle, Label } from 'flowbite-svelte';
+	import { Button, Card, Alert, Heading, P, Toggle, Label } from 'flowbite-svelte';
 	import { Camera, ArrowLeft, FolderOpen, Check, Sparkles } from '@lucide/svelte';
 	import ImageGallery from './ImageGallery.svelte';
 	import CameraView from './CameraView.svelte';
@@ -8,7 +8,6 @@
 		studentId: string;
 		capturedImages: string[];
 		showCamera: boolean;
-		isGrading: boolean;
 		error: string | null;
 		proMode: boolean;
 		numRuns: number;
@@ -31,7 +30,6 @@
 		studentId,
 		capturedImages,
 		showCamera,
-		isGrading,
 		error,
 		proMode,
 		numRuns,
@@ -66,7 +64,12 @@
 	</Alert>
 
 	{#if showCamera}
-		<CameraView bind:videoElement onCapture={onCapturePhoto} onCancel={onStopCamera} />
+		<CameraView
+			bind:videoElement
+			capturedCount={capturedImages.length}
+			onCapture={onCapturePhoto}
+			onCancel={onStopCamera}
+		/>
 	{:else}
 		<div class="space-y-4">
 			<P class="text-gray-600">
@@ -142,14 +145,9 @@
 						</div>
 					</Card>
 
-					<Button size="xl" color="green" class="w-full" onclick={onGrade} disabled={isGrading}>
-						{#if isGrading}
-							<Spinner class="mr-2" size="4" />
-							{proMode ? `Grading (${numRuns} runs)...` : 'Grading...'}
-						{:else}
-							<Check class="mr-2 h-5 w-5" />
-							Grade Answer Sheet
-						{/if}
+					<Button size="xl" color="green" class="w-full" onclick={onGrade}>
+						<Check class="mr-2 h-5 w-5" />
+						Grade Answer Sheet
 					</Button>
 				</div>
 			{/if}

@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import * as env from '$env/static/public';
+import { page } from '$app/state';
 import { WrittenExamGrader } from '$lib/grader';
 import { GoogleGenAI } from '@google/genai';
 
@@ -55,7 +55,8 @@ export class ClientGrader {
 		const genai = new GoogleGenAI({
 			apiKey,
 			httpOptions: {
-				baseUrl: env.PUBLIC_GEMINI_API_BASE_URL,
+				// Use our proxy endpoint to avoid CORS issues
+				baseUrl: page.url.origin + '/api/gemini-proxy',
 				headers: {
 					'cf-aig-metadata': JSON.stringify({
 						service: 'written-exam-grader',

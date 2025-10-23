@@ -11,7 +11,19 @@
 		CaptureAnswerSheet,
 		GradingResultsView
 	} from '$lib/components';
-	import { Key, Cloud } from '@lucide/svelte';
+	import { Key, Cloud, LoaderCircle, CircleCheckBig, CircleX } from '@lucide/svelte';
+
+	// Grading job type
+	type GradingJob = {
+		id: string;
+		studentId: string;
+		images: string[];
+		status: 'pending' | 'grading' | 'completed' | 'error';
+		result?: GradingResult;
+		pricing?: PricingInfo | null;
+		error?: string;
+		timestamp: number;
+	};
 
 	// Step tracking
 	let currentStep = $state<'upload' | 'student' | 'capture' | 'result'>('upload');
@@ -32,6 +44,9 @@
 
 	// Answer sheet images
 	let capturedImages = $state<string[]>([]);
+
+	// Grading queue
+	let gradingJobs = $state<GradingJob[]>([]);
 
 	// Grading
 	let isGrading = $state(false);
@@ -137,7 +152,7 @@
 
 		const imageData = canvasElement.toDataURL('image/jpeg', 0.9);
 		capturedImages = [...capturedImages, imageData];
-		stopCamera();
+		// Don't stop camera - allow continuous capture for multi-page answer sheets
 	}
 
 	function handleAnswerSheetFileSelect(event: Event) {
@@ -177,16 +192,47 @@
 			return;
 		}
 
-		isGrading = true;
+		// Create a grading job
+		const jobId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		const job: GradingJob = {
+			id: jobId,
+			studentId: studentId.trim(),
+			images: [...capturedImages],
+			status: 'pending',
+			timestamp: Date.now()
+		};
+
+		// Add job to queue
+		gradingJobs = [...gradingJobs, job];
+
+		// Reset for next student (non-blocking)
+		const currentStudentId = studentId.trim();
+		const currentImages = [...capturedImages];
+		studentId = '';
+		capturedImages = [];
 		error = null;
-		gradingResult = null;
+		showCamera = false;
+		stopCamera();
+		currentStep = 'student'; // Go back to student input immediately
+
+		// Start grading in background
+		gradeJob(jobId, currentStudentId, currentImages);
+	}
+
+	async function gradeJob(jobId: string, studentIdValue: string, images: string[]) {
+		// Update job status
+		const jobIndex = gradingJobs.findIndex((j) => j.id === jobId);
+		if (jobIndex === -1) return;
+
+		gradingJobs[jobIndex].status = 'grading';
+		gradingJobs = [...gradingJobs];
 
 		try {
 			// Remove data URL prefix if present from question sheet
-			const questionSheetBase64 = questionSheet.replace(/^data:application\/pdf;base64,/, '');
+			const questionSheetBase64 = questionSheet!.replace(/^data:application\/pdf;base64,/, '');
 
 			// Remove data URL prefix if present from all images
-			const imagesBase64 = capturedImages.map((image: string) =>
+			const imagesBase64 = images.map((image: string) =>
 				image.replace(/^data:image\/\w+;base64,/, '')
 			);
 
@@ -221,8 +267,8 @@
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
-						questionSheet,
-						images: capturedImages,
+						questionSheet: questionSheet!,
+						images: images,
 						proMode,
 						numRuns
 					})
@@ -235,29 +281,38 @@
 				data = await response.json();
 			}
 
-			gradingResult = {
+			const result: GradingResult = {
 				...data.result,
-				studentId: studentId.trim(),
+				studentId: studentIdValue,
 				confidences: data.confidences,
 				runs: data.runs,
 				allResults: data.results
 			};
 
-			// Calculate pricing from usage metadata and ceil to the first digit
+			// Calculate pricing from usage metadata
+			let pricing: PricingInfo | null = null;
 			try {
-				const pricing = calculatePricing(data.usage);
+				const pricingCalc = calculatePricing(data.usage);
 				const ceilToFirst = (n: number) => Math.ceil(n * 10) / 10;
-				const inputCost = ceilToFirst(pricing.inputCost) + ceilToFirst(pricing.cachedCost);
-				const outputCost = ceilToFirst(pricing.outputCost);
+				const inputCost = ceilToFirst(pricingCalc.inputCost) + ceilToFirst(pricingCalc.cachedCost);
+				const outputCost = ceilToFirst(pricingCalc.outputCost);
 				const totalCost = inputCost + outputCost;
-				lastPricing = {
+				pricing = {
 					totalCost,
 					inputCost,
 					outputCost
 				};
 			} catch (err) {
 				console.error('Failed to calculate pricing', err);
-				lastPricing = null;
+			}
+
+			// Update job with result
+			const updatedJobIndex = gradingJobs.findIndex((j) => j.id === jobId);
+			if (updatedJobIndex !== -1) {
+				gradingJobs[updatedJobIndex].status = 'completed';
+				gradingJobs[updatedJobIndex].result = result;
+				gradingJobs[updatedJobIndex].pricing = pricing;
+				gradingJobs = [...gradingJobs];
 			}
 
 			// Save result to session
@@ -265,18 +320,30 @@
 				...allResults,
 				{
 					...data.result,
-					studentId: studentId.trim(),
+					studentId: studentIdValue,
 					timestamp: new Date().toISOString(),
-					pricing: lastPricing
+					pricing
 				}
 			];
-
-			currentStep = 'result';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'An error occurred while grading';
+			const errorMessage = err instanceof Error ? err.message : 'An error occurred while grading';
 			console.error(err);
-		} finally {
-			isGrading = false;
+
+			// Update job with error
+			const updatedJobIndex = gradingJobs.findIndex((j) => j.id === jobId);
+			if (updatedJobIndex !== -1) {
+				gradingJobs[updatedJobIndex].status = 'error';
+				gradingJobs[updatedJobIndex].error = errorMessage;
+				gradingJobs = [...gradingJobs];
+			}
+		}
+	}
+
+	function viewJobResult(job: GradingJob) {
+		if (job.result) {
+			gradingResult = job.result;
+			lastPricing = job.pricing || null;
+			currentStep = 'result';
 		}
 	}
 
@@ -329,6 +396,59 @@
 			/>
 		</div>
 
+		<!-- Grading Queue Status -->
+		{#if gradingJobs.length > 0}
+			<div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+				<h3 class="mb-3 text-lg font-semibold text-gray-900">Grading Queue</h3>
+				<div class="space-y-2">
+					{#each gradingJobs as job (job.id)}
+						<div
+							class="flex items-center justify-between rounded-lg border p-3 {job.status ===
+							'completed'
+								? 'border-green-200 bg-green-50'
+								: job.status === 'error'
+									? 'border-red-200 bg-red-50'
+									: 'border-blue-200 bg-blue-50'}"
+						>
+							<div class="flex items-center gap-3">
+								{#if job.status === 'grading' || job.status === 'pending'}
+									<LoaderCircle class="h-5 w-5 animate-spin text-blue-600" />
+								{:else if job.status === 'completed'}
+									<CircleCheckBig class="h-5 w-5 text-green-600" />
+								{:else if job.status === 'error'}
+									<CircleX class="h-5 w-5 text-red-600" />
+								{/if}
+								<div>
+									<div class="font-medium text-gray-900">{job.studentId}</div>
+									<div class="text-sm text-gray-600">
+										{job.images.length}
+										{job.images.length === 1 ? 'image' : 'images'}
+										{#if job.status === 'grading'}
+											- Grading...
+										{:else if job.status === 'pending'}
+											- Pending...
+										{:else if job.status === 'completed' && job.result}
+											- Score: {job.result.totalScore}/{job.result.maxPossibleScore}
+										{:else if job.status === 'error'}
+											- Error: {job.error}
+										{/if}
+									</div>
+								</div>
+							</div>
+							{#if job.status === 'completed'}
+								<button
+									onclick={() => viewJobResult(job)}
+									class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+								>
+									View Result
+								</button>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		{#if currentStep === 'upload'}
 			<UploadQuestionSheet {error} onUpload={handleQuestionSheetUpload} />
 		{:else if currentStep === 'student'}
@@ -345,7 +465,6 @@
 				{studentId}
 				{capturedImages}
 				{showCamera}
-				{isGrading}
 				{error}
 				{proMode}
 				{numRuns}
@@ -365,20 +484,20 @@
 			/>
 
 			<!-- Mode Indicator -->
-			{#if capturedImages.length > 0}
-				<div class="mt-4 flex items-center justify-center gap-2 text-sm">
-					<span class="text-gray-600">Grading mode:</span>
+			<div class="mt-4 rounded-lg border border-gray-200 bg-white p-3 text-center">
+				<div class="text-sm text-gray-600">Grading with:</div>
+				<div class="mt-1">
 					{#if useClientMode}
-						<span class="rounded-full bg-green-100 px-3 py-1 font-medium text-green-700">
-							<Key class="inline h-5 w-5" /> Client-side (BYOK)
+						<span class="inline-flex items-center gap-1 text-base font-medium text-green-700">
+							<Key class="h-4 w-4" /> BYOK
 						</span>
 					{:else}
-						<span class="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-700">
-							<Cloud class="inline h-5 w-5" /> Server-side
+						<span class="inline-flex items-center gap-1 text-base font-medium text-blue-700">
+							<Cloud class="h-4 w-4" /> Managed
 						</span>
 					{/if}
 				</div>
-			{/if}
+			</div>
 		{:else if currentStep === 'result' && gradingResult}
 			<GradingResultsView {gradingResult} pricing={lastPricing} onNext={resetToStudentInput} />
 		{/if}

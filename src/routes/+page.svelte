@@ -5,7 +5,7 @@
 		FileText,
 		Sparkles,
 		Lock,
-		CheckCircle,
+		CircleCheckBig,
 		ArrowRight,
 		Key,
 		Shield,
@@ -178,7 +178,7 @@
 					<div
 						class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-secondary-100 transition-all duration-300"
 					>
-						<CheckCircle class="h-6 w-6 text-secondary-600" />
+						<CircleCheckBig class="h-6 w-6 text-secondary-600" />
 					</div>
 					<Heading tag="h3" class="mb-2 text-xl">Easy to Use</Heading>
 					<P class="text-gray-600">
@@ -257,7 +257,7 @@
 								feedback, scores, and explanations for each question.
 							</P>
 						</div>
-						<CheckCircle
+						<CircleCheckBig
 							class="h-12 w-12 text-primary-600 opacity-20 transition-opacity duration-300 hover:opacity-40"
 						/>
 					</div>
@@ -295,19 +295,19 @@
 						<Hr class="my-4" />
 						<ul class="space-y-3 text-gray-600">
 							<li class="flex items-start gap-3">
-								<CheckCircle class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+								<CircleCheckBig class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
 								<span>One AI analysis pass</span>
 							</li>
 							<li class="flex items-start gap-3">
-								<CheckCircle class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+								<CircleCheckBig class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
 								<span>~2 minutes per answer sheet</span>
 							</li>
 							<li class="flex items-start gap-3">
-								<CheckCircle class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+								<CircleCheckBig class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
 								<span>Good for straightforward answers</span>
 							</li>
 							<li class="flex items-start gap-3">
-								<CheckCircle class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+								<CircleCheckBig class="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
 								<span>Lower cost per grading</span>
 							</li>
 						</ul>
@@ -364,17 +364,19 @@
 					BYOK Mode
 				</Heading>
 				<P class="mb-8 text-lg text-secondary-50" align="center">
-					For maximum privacy, use Bring Your Own Key mode to process everything in your browser.
+					For maximum privacy, use Bring Your Own Key mode with your own Gemini API key.
 				</P>
 
 				<div class="grid gap-6 text-left md:grid-cols-3">
 					<div
 						class="rounded-lg bg-white/10 p-6 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:bg-white/20"
 					>
-						<CheckCircle class="mb-3 h-8 w-8" />
-						<Heading tag="h4" class="mb-2 text-lg text-secondary-50">100% Private</Heading>
+						<CircleCheckBig class="mb-3 h-8 w-8" />
+						<Heading tag="h4" class="mb-2 text-lg text-secondary-50">Privacy First</Heading>
 						<P class="text-sm text-secondary-100">
-							All processing happens in your browser. No data sent to our servers.
+							Your exam data goes only to Google's Gemini API. Our server uses a <em>stateless</em>
+							CORS proxy that simply forwards the browser's request and adds CORS headers — no storage,
+							no inspection, no logging of content.
 						</P>
 					</div>
 
@@ -384,7 +386,9 @@
 						<Key class="mb-3 h-8 w-8" />
 						<Heading tag="h4" class="mb-2 text-lg text-secondary-50">Your API Key</Heading>
 						<P class="text-sm text-secondary-100">
-							Use your own Gemini API key. Full control over your usage and costs.
+							Use your own Gemini API key. The official Google SDK attaches it to the request in
+							your browser; the proxy forwards it unchanged. You keep full control over usage and
+							costs.
 						</P>
 					</div>
 
@@ -394,7 +398,9 @@
 						<Shield class="mb-3 h-8 w-8" />
 						<Heading tag="h4" class="mb-2 text-lg text-secondary-50">Secure Storage</Heading>
 						<P class="text-sm text-secondary-100">
-							API key stored locally in your browser. Never transmitted anywhere.
+							Your API key is saved only in your browser's localStorage. It is never persisted on
+							our servers and is present only in the forwarded request for the duration of that
+							request.
 						</P>
 					</div>
 				</div>
