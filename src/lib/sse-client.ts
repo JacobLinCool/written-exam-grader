@@ -85,79 +85,81 @@ export async function gradeWithSSE(
 	headers: Record<string, string>,
 	handlers: SSEEventHandlers
 ): Promise<void> {
-	return new Promise((resolve, reject) => {
-		// First, make the POST request to initiate grading
-		fetch(url, {
+	try {
+		const response = await fetch(url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				...headers
 			},
 			body: JSON.stringify(body)
-		})
-			.then(async (response) => {
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
+		});
 
-				const reader = response.body?.getReader();
-				if (!reader) {
-					throw new Error('No response body');
-				}
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
 
-				const decoder = new TextDecoder();
-				let buffer = '';
+		const reader = response.body?.getReader();
+		if (!reader) {
+			throw new Error('No response body');
+		}
 
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
+		const decoder = new TextDecoder();
+		let buffer = '';
 
-					buffer += decoder.decode(value, { stream: true });
-					const lines = buffer.split('\n\n');
-					buffer = lines.pop() || '';
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
 
-					for (const line of lines) {
-						if (!line.trim()) continue;
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n\n');
+			buffer = lines.pop() || '';
 
-						const [eventLine, dataLine] = line.split('\n');
-						if (!eventLine || !dataLine) continue;
+			let stop = false;
+			for (const line of lines) {
+				if (!line.trim()) continue;
 
-						const event = eventLine.replace('event: ', '');
-						const dataStr = dataLine.replace('data: ', '');
+				const [eventLine, dataLine] = line.split('\n');
+				if (!eventLine || !dataLine) continue;
 
-						try {
-							const data = JSON.parse(dataStr);
+				const event = eventLine.replace('event: ', '');
+				const dataStr = dataLine.replace('data: ', '');
 
-							switch (event) {
-								case 'heartbeat':
-									handlers.onHeartbeat?.(data);
-									break;
-								case 'progress':
-									handlers.onProgress?.(data);
-									break;
-								case 'result':
-									handlers.onResult?.(data);
-									break;
-								case 'error':
-									handlers.onError?.(data);
-									reject(new Error(data.message));
-									return;
-								case 'done':
-									handlers.onDone?.();
-									resolve();
-									return;
-							}
-						} catch (e) {
-							console.error('Failed to parse SSE data:', e);
-						}
+				try {
+					const data = JSON.parse(dataStr);
+
+					switch (event) {
+						case 'heartbeat':
+							handlers.onHeartbeat?.(data);
+							break;
+						case 'progress':
+							handlers.onProgress?.(data);
+							break;
+						case 'result':
+							handlers.onResult?.(data);
+							break;
+						case 'error':
+							handlers.onError?.(data);
+							throw new Error(data.message);
+						case 'done':
+							handlers.onDone?.();
+							stop = true;
+							break;
 					}
+				} catch (e) {
+					console.error('Failed to parse SSE data:', e);
 				}
 
-				resolve();
-			})
-			.catch((error) => {
-				handlers.onError?.({ message: error.message });
-				reject(error);
-			});
-	});
+				if (stop) break;
+			}
+
+			if (stop) break;
+		}
+	} catch (error) {
+		if (error instanceof Error) {
+			handlers.onError?.({ message: error.message });
+		} else {
+			handlers.onError?.({ message: 'An unknown error occurred: ' + String(error) });
+		}
+	}
 }
