@@ -349,6 +349,8 @@
 		// Auto-enable BYOK mode if API key is already set
 		if (clientApiKeyManager.maskedApiKey) {
 			useBYOKMode = true;
+		} else {
+			useBYOKMode = false;
 		}
 
 		return () => {
