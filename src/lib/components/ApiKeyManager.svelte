@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { GEMINI_API_KEY_STORAGE_KEY } from '$lib/client-api-key-manager.svelte';
 	import { Key, Eye, EyeOff, X } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -52,7 +53,7 @@
 	}
 
 	onMount(() => {
-		apiKey = localStorage.getItem('gemini_api_key') || '';
+		apiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
 	});
 </script>
 
@@ -138,9 +139,7 @@
 					<li>Create a new API key or use an existing one</li>
 					<li>Copy and paste it here</li>
 				</ol>
-				<p class="mt-2 text-xs text-primary-700">
-					Your API key is stored locally in your browser and never sent to our servers.
-				</p>
+				<p class="mt-2 text-xs text-primary-700">Your API key is stored locally in your browser.</p>
 			</div>
 
 			<button
@@ -153,9 +152,6 @@
 	{/if}
 
 	{#if !hasKey && !showInput}
-		<p class="mt-2 text-sm text-gray-600">
-			Use your own Gemini API key to grade exams directly in your browser. No data is sent to our
-			servers.
-		</p>
+		<p class="mt-2 text-sm text-gray-600">Use your own Gemini API key to grade exams.</p>
 	{/if}
 </div>

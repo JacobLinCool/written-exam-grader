@@ -10,7 +10,8 @@ A mobile-friendly web application that automatically grades handwritten answer s
 - 🤖 MLLM-powered answer grading
 - ✅ Feedback for each question
 - 💯 Automatic score calculation
-- 🔑 BYOK Mode - Use your own API key for grading
+- � Visual position tracking - See exactly where each answer is on the sheet with color-coded bounding boxes
+- �🔑 BYOK Mode - Use your own API key for grading
 
 ## Usage Modes
 
@@ -21,27 +22,19 @@ Grading with your own API key.
 1. Click "Set API Key" on the main page
 2. Enter your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
 3. Your API key is stored locally in your browser's localStorage
+4. When grading, your API key is attached to the request but not stored on the server
 
-**How it works:**
+#### Why not provide direct client-to-Gemini API calls?
 
-- ✅ Your API key is stored only in your browser's localStorage
-- ✅ When grading, your browser (via the official Google GenAI SDK) attaches your API key to the request
-- ✅ The request is sent to our CORS proxy endpoint, which forwards it to Google's Gemini API **unchanged** and only adds CORS headers
-- ✅ The proxy is stateless and acts as a transparent pass-through to avoid browser CORS restrictions
+Browsers block direct API calls to Google's Gemini API due to CORS (Cross-Origin Resource Sharing) restrictions.
 
-**Why we need a proxy:**
-
-Browsers block direct API calls to Google's Gemini API due to CORS (Cross-Origin Resource Sharing) restrictions. Our proxy endpoint (`/api/gemini-proxy`) solves this by:
-
-- Accepting the SDK-authenticated request from your browser (which already contains your API key in the standard Google header/query format)
-- Forwarding it to Google's Gemini API without modification (aside from adding CORS headers)
-- Returning the response back to your browser
+If you have strict privacy requirements, we recommend self-hosting the app so that no third-party server handles your requests.
 
 ### Server Mode
 
-If `AI_GRADER_SERVER_ENABLED` is set to `true` in the `.env` file, the server mode will be enabled.
+If `GEMINI_API_KEY` is set in the `.env` file, the server mode will be enabled.
 
-The application uses server-side API keys configured in the `.env` file. Your exam data is processed on the server.
+If the user has not set a personal API key, the application will use the configured API key to process the requests.
 
 ## Setup
 

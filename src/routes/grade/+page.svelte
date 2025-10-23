@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { GradingResult, SessionResult, PricingInfo } from '$lib/types';
 	import { calculatePricing } from '$lib/pricing';
-	import { ClientGrader } from '$lib/client-grader.svelte';
+	import { ClientApiKeyManager } from '$lib/client-api-key-manager.svelte';
 	import { onMount } from 'svelte';
 	import {
 		ApiKeyManager,
@@ -19,8 +19,8 @@
 	let currentStep = $state<'upload' | 'student' | 'capture' | 'result'>('upload');
 
 	// BYOK mode
-	let clientGrader = $state<ClientGrader>(new ClientGrader());
-	let useClientMode = $state<boolean>(true);
+	let clientApiKeyManager = $state<ClientApiKeyManager>(new ClientApiKeyManager());
+	let useBYOKMode = $state<boolean>(true);
 
 	// Question sheet
 	let questionSheet = $state<string | null>(null);
@@ -178,7 +178,7 @@
 		if (!questionSheet || capturedImages.length === 0 || !studentId.trim()) return;
 
 		// Check if we should use client-side grading
-		if (useClientMode && !clientGrader.maskedApiKey) {
+		if (useBYOKMode && !clientApiKeyManager.maskedApiKey) {
 			error = 'Please set your API key first to use BYOK mode';
 			return;
 		}
@@ -242,48 +242,28 @@
 
 			let data: any;
 
-			if (useClientMode) {
-				// Client-side grading using user's API key
-				const result = proMode
-					? await clientGrader.gradeMultipass({
-							questionSheetBase64,
-							imagesBase64,
-							numRuns,
-							concurrency: 3
-						})
-					: await clientGrader.grade({
-							questionSheetBase64,
-							imagesBase64
-						});
+			// Server-side grading
+			const response = await fetch('/api/grade', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(useBYOKMode && clientApiKeyManager.apiKey
+						? { 'X-GOOG-API-KEY': clientApiKeyManager.apiKey }
+						: {})
+				},
+				body: JSON.stringify({
+					questionSheetBase64,
+					imagesBase64,
+					proMode,
+					numRuns
+				})
+			});
 
-				data = {
-					result: result.result,
-					usage: result.usage,
-					confidences: 'confidences' in result ? result.confidences : undefined,
-					runs: 'runs' in result ? result.runs : undefined,
-					results: 'results' in result ? result.results : undefined
-				};
-			} else {
-				// Server-side grading
-				const response = await fetch('/api/grade', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						questionSheet: questionSheet!,
-						images: images,
-						proMode,
-						numRuns
-					})
-				});
-
-				if (!response.ok) {
-					throw new Error('Failed to grade answer sheet');
-				}
-
-				data = await response.json();
+			if (!response.ok) {
+				throw new Error('Failed to grade answer sheet');
 			}
+
+			data = await response.json();
 
 			const result: GradingResult = {
 				...data.result,
@@ -364,11 +344,11 @@
 	}
 
 	onMount(() => {
-		// Initialize client grader
-		clientGrader = new ClientGrader();
-		// Auto-enable client mode if API key is already set
-		if (clientGrader.maskedApiKey) {
-			useClientMode = true;
+		// Initialize client API key manager
+		clientApiKeyManager = new ClientApiKeyManager();
+		// Auto-enable BYOK mode if API key is already set
+		if (clientApiKeyManager.maskedApiKey) {
+			useBYOKMode = true;
 		}
 
 		return () => {
@@ -388,15 +368,15 @@
 		<!-- API Key Manager -->
 		<div class="mb-6">
 			<ApiKeyManager
-				hasKey={clientGrader.maskedApiKey !== null}
-				maskedKey={clientGrader.maskedApiKey}
+				hasKey={clientApiKeyManager.maskedApiKey !== null}
+				maskedKey={clientApiKeyManager.maskedApiKey}
 				onSetKey={(key) => {
-					clientGrader.setApiKey(key);
-					useClientMode = true;
+					clientApiKeyManager.setApiKey(key);
+					useBYOKMode = true;
 				}}
 				onClearKey={() => {
-					clientGrader.clearApiKey();
-					useClientMode = false;
+					clientApiKeyManager.clearApiKey();
+					useBYOKMode = false;
 				}}
 			/>
 		</div>
@@ -442,7 +422,7 @@
 			<div class="mt-4 rounded-lg border border-gray-200 bg-white p-3 text-center">
 				<div class="text-sm text-gray-600">Grading with:</div>
 				<div class="mt-1">
-					{#if useClientMode}
+					{#if useBYOKMode}
 						<span class="inline-flex items-center gap-1 text-base font-medium text-green-700">
 							<Key class="h-4 w-4" /> BYOK
 						</span>

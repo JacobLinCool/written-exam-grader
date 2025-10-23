@@ -13,41 +13,57 @@ for (const key of keys) {
 	pool.add({
 		apiKey: key,
 		httpOptions: {
-			baseUrl: env.GEMINI_API_BASE_URL // Work with custom base URL if needed
+			baseUrl: env.GEMINI_API_BASE_URL
+			// pool already adds cf-aig-metadata header
 		}
 	});
 }
 
-const AI_GRADER_SERVER_ENABLED = env.AI_GRADER_SERVER_ENABLED === 'true' || false;
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
 const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
 const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
 
-const grader = new WrittenExamGrader(pool);
+const serverGrader = new WrittenExamGrader(pool);
 
 export const POST: RequestHandler = async ({ request }) => {
-	if (!AI_GRADER_SERVER_ENABLED) {
-		return json({ error: 'AI grading server mode is disabled' }, { status: 403 });
+	const apiKey = request.headers.get('X-GOOG-API-KEY');
+
+	let grader: WrittenExamGrader;
+	if (apiKey) {
+		// Use BYOK mode with user's API key
+		const genai = new GoogleGenAI({
+			apiKey,
+			httpOptions: {
+				baseUrl: env.GEMINI_API_BASE_URL,
+				headers: {
+					'cf-aig-metadata': JSON.stringify({
+						service: 'written-exam-grader',
+						byok: true
+					})
+				}
+			}
+		});
+		grader = new WrittenExamGrader(genai);
+	} else if (keys.length > 0) {
+		// Use server-side configured API keys
+		grader = serverGrader;
+	} else {
+		return json(
+			{ error: 'No API key configured on server, please use BYOK mode with your own API key.' },
+			{ status: 400 }
+		);
 	}
 
 	try {
-		const { questionSheet, images, proMode } = await request.json();
+		const { questionSheetBase64, imagesBase64, proMode } = await request.json();
 
-		if (!questionSheet || typeof questionSheet !== 'string') {
+		if (!questionSheetBase64 || typeof questionSheetBase64 !== 'string') {
 			return json({ error: 'Missing or invalid questionSheet (PDF base64)' }, { status: 400 });
 		}
 
-		if (!images || !Array.isArray(images) || images.length === 0) {
+		if (!imagesBase64 || !Array.isArray(imagesBase64) || imagesBase64.length === 0) {
 			return json({ error: 'Missing images. Images must be a non-empty array.' }, { status: 400 });
 		}
-
-		// Remove data URL prefix if present from question sheet
-		const questionSheetBase64 = questionSheet.replace(/^data:application\/pdf;base64,/, '');
-
-		// Remove data URL prefix if present from all images
-		const imagesBase64 = images.map((image: string) =>
-			image.replace(/^data:image\/\w+;base64,/, '')
-		);
 
 		// Use multipass grading if Pro mode is enabled
 		const result = proMode
