@@ -13,7 +13,9 @@
 
 <Card size="xl" class="p-4">
 	<Heading tag="h2" class="mb-4">Step 1: Upload Question Sheet</Heading>
-	<P class="mb-4 text-gray-600">Upload a PDF containing the questions and correct answers.</P>
+	<P class="mb-4 text-gray-600">
+		Upload a PDF containing the questions, correct answers, and the mark allocations.
+	</P>
 
 	{#if error}
 		<Alert color="red" class="mb-4">

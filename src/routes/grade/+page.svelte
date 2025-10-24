@@ -15,6 +15,7 @@
 	import type { GradingJob } from '$lib/components/GradingQueue.svelte';
 	import { gradeWithSSE } from '$lib/sse-client';
 	import { Key, Cloud } from '@lucide/svelte';
+	import { P } from 'flowbite-svelte';
 
 	// Step tracking
 	let currentStep = $state<'upload' | 'student' | 'capture' | 'result'>('upload');
@@ -392,8 +393,8 @@
 	<title>Written Exam Grader</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4">
-	<div class="mx-auto max-w-2xl">
+<div class="flex min-h-screen flex-col gap-2 bg-gradient-to-b from-blue-50 to-white p-4">
+	<div class="mx-auto max-w-2xl flex-1 w-full">
 		<AppHeader resultsCount={allResults.length} onDownload={downloadResults} onReset={resetAll} />
 
 		<!-- API Key Manager -->
@@ -473,4 +474,21 @@
 			/>
 		{/if}
 	</div>
+
+	<!-- Footer -->
+	<footer>
+		<div class="text-center text-sm text-gray-500">
+			<p>
+				<a href="/" class="hover:text-gray-700" target="_blank">Written Exam Grader</a>
+				&middot;
+				<a
+					href="https://github.com/JacobLinCool/written-exam-grader"
+					class="hover:text-gray-700"
+					target="_blank"
+				>
+					View on GitHub
+				</a>
+			</p>
+		</div>
+	</footer>
 </div>
