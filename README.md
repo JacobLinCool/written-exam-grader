@@ -31,9 +31,9 @@ Browsers block direct API calls to Google's Gemini API due to CORS (Cross-Origin
 
 If you have strict privacy requirements, we recommend self-hosting the app so that no third-party server handles your requests.
 
-### Server Mode
+### Managed Mode
 
-If `GEMINI_API_KEY` is set in the `.env` file, the server mode will be enabled.
+If `GEMINI_API_KEY` is set in the `.env` file, the managed mode will be enabled.
 
 If the user has not set a personal API key, the application will use the configured API key to process the requests.
 
@@ -59,7 +59,7 @@ If the user has not set a personal API key, the application will use the configu
    GEMINI_API_KEY=your_api_key_here
    ```
 
-   **Note:** This is only required for server mode. If you plan to use BYOK mode exclusively, you can skip this step.
+   **Note:** This is only required for managed mode. If you plan to use BYOK mode exclusively, you can skip this step.
 
 ### Development
 
