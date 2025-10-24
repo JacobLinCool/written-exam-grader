@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { toGeminiSchema } from 'gemini-zod';
 import { z } from 'zod/v3';
 import type { GoogleGenAIPool } from './genai-pool';
+import { generateContentWithRetry } from './retry';
 
 const ValidationResult = z.object({
 	isValid: z.boolean().describe('Whether the images appear to be student answer sheets'),
@@ -28,7 +29,7 @@ export class ImageValidator implements IImageValidator {
 	constructor(private ai: GoogleGenAI | GoogleGenAIPool) {}
 
 	public async validate(options: ImageValidationOptions): Promise<ValidationResult> {
-		const model = options.model || 'gemini-2.0-flash-exp';
+		const model = options.model || 'gemini-2.0-flash';
 
 		const prompt = `You are an expert at analyzing images to determine if they are student answer sheets for exams.
 
@@ -58,7 +59,7 @@ Be strict but reasonable - if most images look like answer sheets but one might 
 
 		console.log('Sending validation request to validation model...');
 
-		const validationResponse = await this.generateContentWithRetry({
+		const validationResponse = await generateContentWithRetry(this.ai, {
 			model,
 			contents: [
 				{
@@ -88,44 +89,5 @@ Be strict but reasonable - if most images look like answer sheets but one might 
 
 		const result = ValidationResult.parse(JSON.parse(validationResponse.text));
 		return result;
-	}
-
-	private async generateContentWithRetry(
-		request: Parameters<GoogleGenAI['models']['generateContent']>[0],
-		options?: { retries?: number; baseDelayMs?: number; maxDelayMs?: number }
-	) {
-		const retries = options?.retries ?? 3;
-		const baseDelayMs = options?.baseDelayMs ?? 2_000;
-		const maxDelayMs = options?.maxDelayMs ?? 600_000;
-
-		let attempt = 0;
-		let lastErr: unknown = null;
-
-		while (attempt <= retries) {
-			try {
-				return await this.ai.models.generateContent(request);
-			} catch (err) {
-				lastErr = err;
-				attempt++;
-
-				// If we've exhausted retries, rethrow
-				if (attempt > retries) break;
-
-				// Exponential backoff with full jitter
-				const exp = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
-				const delay = Math.floor(Math.random() * exp);
-
-				console.warn(
-					`generateContent failed on attempt ${attempt} - retrying after ${delay}ms. Error:`,
-					err
-				);
-
-				await new Promise((res) => setTimeout(res, delay));
-			}
-		}
-
-		// If lastErr is an Error, rethrow it; otherwise wrap it
-		if (lastErr instanceof Error) throw lastErr;
-		throw new Error(String(lastErr));
 	}
 }

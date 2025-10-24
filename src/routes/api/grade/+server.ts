@@ -24,7 +24,7 @@ for (const key of keys) {
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
 const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
 const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
-const AI_VALIDATOR_MODEL = env.AI_VALIDATOR_MODEL || 'gemini-2.0-flash-exp';
+const AI_VALIDATOR_MODEL = env.AI_VALIDATOR_MODEL || 'gemini-2.0-flash';
 
 const serverGrader = new WrittenExamGrader(pool);
 const serverValidator = new ImageValidator(pool);
@@ -100,7 +100,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 					console.log('Validation result:', validationResult);
 
-					if (!validationResult.isValid) {
+					if (!validationResult.isValid && validationResult.confidence >= 0.7) {
 						sendEvent('error', {
 							message: `Invalid images detected: ${validationResult.reason}`
 						});

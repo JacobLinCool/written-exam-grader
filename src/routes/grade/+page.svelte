@@ -40,7 +40,6 @@
 	let gradingJobs = $state<GradingJob[]>([]);
 
 	// Grading
-	let isGrading = $state(false);
 	let gradingResult = $state<GradingResult | null>(null);
 	let lastPricing = $state<PricingInfo | null>(null);
 	let currentAnswerSheetImages = $state<string[]>([]);
@@ -242,6 +241,7 @@
 			);
 
 			let resultData: any;
+			let errorMessage: string | null = null;
 
 			// Use SSE for grading
 			await gradeWithSSE(
@@ -279,7 +279,7 @@
 						resultData = data;
 					},
 					onError: (data) => {
-						throw new Error(data.message);
+						errorMessage = data.message;
 					},
 					onDone: () => {
 						console.log('Grading completed');
@@ -287,6 +287,9 @@
 				}
 			);
 
+			if (errorMessage) {
+				throw new Error(errorMessage);
+			}
 			if (!resultData) {
 				throw new Error('No result data received');
 			}
