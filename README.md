@@ -10,8 +10,9 @@ A mobile-friendly web application that automatically grades handwritten answer s
 - 🤖 MLLM-powered answer grading
 - ✅ Feedback for each question
 - 💯 Automatic score calculation
-- � Visual position tracking - See exactly where each answer is on the sheet with color-coded bounding boxes
-- �🔑 BYOK Mode - Use your own API key for grading
+- 📍 Visual position tracking - See exactly where each answer is on the sheet with color-coded bounding boxes
+- 🔑 BYOK Mode - Use your own API key for grading
+- 🛡️ Request validation - Automatically detects and rejects invalid images (e.g., group photos) before grading
 
 ## Usage Modes
 
@@ -79,5 +80,11 @@ pnpm preview
 
 - **Framework**: SvelteKit 2 with Svelte 5
 - **Styling**: Flowbite-Svelte + Lucide Icons
-- **AI**: Google Gemini
+- **AI**: Google Gemini (Gemini 2.5 Pro for grading, Gemini 2.0 Flash for validation)
 - **Type Safety**: TypeScript + Zod v3
+
+## How It Works
+
+1. **Image Validation**: When you upload images of answer sheets, the system first validates them using Gemini 2.0 Flash to ensure they are actually student answer sheets and not unrelated images (like group photos or dinner pictures).
+2. **Grading**: If validation passes, the images are processed by Gemini 2.5 Pro to grade the answers against the question sheet.
+3. **Results**: You receive detailed feedback for each question, including scores, explanations, and visual position tracking.
