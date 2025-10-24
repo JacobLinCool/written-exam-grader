@@ -1,11 +1,8 @@
-import {
-	type GenerateContentParameters,
-	type GenerateContentResponseUsageMetadata,
-	GoogleGenAI
-} from '@google/genai';
+import { type GenerateContentResponseUsageMetadata, GoogleGenAI } from '@google/genai';
 import { toGeminiSchema } from 'gemini-zod';
 import { z } from 'zod/v3';
 import type { GoogleGenAIPool } from './genai-pool';
+import { generateContentWithRetry } from './retry';
 
 const QuestionResult = z.object({
 	questionNumber: z.number().describe('The question number'),
@@ -108,7 +105,7 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 
 		console.log('Sending grading request to grading model...');
 
-		const gradingResponse = await this.generateContentWithRetry({
+		const gradingResponse = await generateContentWithRetry(this.ai, {
 			model: options.model,
 			contents: [
 				{
@@ -299,45 +296,5 @@ IMPORTANT: Extract the score/points for each question from the question sheet. T
 			runs: options.numRuns,
 			results: allResults
 		};
-	}
-
-	private async generateContentWithRetry(
-		request: GenerateContentParameters,
-		options?: { retries?: number; baseDelayMs?: number; maxDelayMs?: number }
-	) {
-		const retries = options?.retries ?? 3;
-		const baseDelayMs = options?.baseDelayMs ?? 2_000;
-		const maxDelayMs = options?.maxDelayMs ?? 600_000;
-
-		let attempt = 0;
-		let lastErr: unknown = null;
-
-		while (attempt <= retries) {
-			try {
-				return await this.ai.models.generateContent(request);
-			} catch (err) {
-				lastErr = err;
-				attempt++;
-
-				// If we've exhausted retries, rethrow
-				if (attempt > retries) break;
-
-				// Exponential backoff with full jitter
-				// delay = random(0, min(maxDelay, baseDelay * 2^(attempt)))
-				const exp = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
-				const delay = Math.floor(Math.random() * exp);
-
-				console.warn(
-					`generateContent failed on attempt ${attempt} - retrying after ${delay}ms. Error:`,
-					err
-				);
-
-				await new Promise((res) => setTimeout(res, delay));
-			}
-		}
-
-		// If lastErr is an Error, rethrow it; otherwise wrap it
-		if (lastErr instanceof Error) throw lastErr;
-		throw new Error(String(lastErr));
 	}
 }

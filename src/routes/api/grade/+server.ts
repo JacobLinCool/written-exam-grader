@@ -1,12 +1,14 @@
 import { env } from '$env/dynamic/private';
 import { GoogleGenAIPool } from '$lib/genai-pool';
 import { WrittenExamGrader } from '$lib/grader';
+import { ImageValidator } from '$lib/validator';
 import { GoogleGenAI } from '@google/genai';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
 const pool = new GoogleGenAIPool(GoogleGenAI);
 
-const keys = env.GEMINI_API_KEY.split(',')
+const keys = (env.GEMINI_API_KEY || '')
+	.split(',')
 	.map((k) => k.trim())
 	.filter((k) => k);
 for (const key of keys) {
@@ -22,13 +24,16 @@ for (const key of keys) {
 const AI_GRADER_MODEL = env.AI_GRADER_MODEL || 'gemini-2.5-pro';
 const AI_GRADER_PRO_CONCURRENCY = parseInt(env.AI_GRADER_PRO_CONCURRENCY || '5', 10) || 5;
 const AI_GRADER_PRO_RUNS = parseInt(env.AI_GRADER_PRO_RUNS || '5', 10) || 5;
+const AI_VALIDATOR_MODEL = env.AI_VALIDATOR_MODEL || 'gemini-2.0-flash';
 
 const serverGrader = new WrittenExamGrader(pool);
+const serverValidator = new ImageValidator(pool);
 
 export const POST: RequestHandler = async ({ request }) => {
 	const apiKey = request.headers.get('X-GOOG-API-KEY');
 
 	let grader: WrittenExamGrader;
+	let validator: ImageValidator;
 	if (apiKey) {
 		// Use BYOK mode with user's API key
 		const genai = new GoogleGenAI({
@@ -44,9 +49,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 		grader = new WrittenExamGrader(genai);
+		validator = new ImageValidator(genai);
 	} else if (keys.length > 0) {
 		// Use server-side configured API keys
 		grader = serverGrader;
+		validator = serverValidator;
 	} else {
 		return json(
 			{ error: 'No API key configured on server, please use BYOK mode with your own API key.' },
@@ -82,6 +89,24 @@ export const POST: RequestHandler = async ({ request }) => {
 				}, 10000);
 
 				try {
+					// Validate images first using a faster model
+					console.log('Validating images...');
+					sendEvent('progress', { type: 'validating', current: 0, total: 1 });
+
+					const validationResult = await validator.validate({
+						imagesBase64,
+						model: AI_VALIDATOR_MODEL
+					});
+
+					console.log('Validation result:', validationResult);
+
+					if (!validationResult.isValid && validationResult.confidence >= 0.7) {
+						sendEvent('error', {
+							message: `Invalid images detected: ${validationResult.reason}`
+						});
+						return;
+					}
+
 					// Use multipass grading if Pro mode is enabled
 					const result = proMode
 						? await grader.gradeMultipass({
