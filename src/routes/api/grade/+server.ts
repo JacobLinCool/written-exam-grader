@@ -10,7 +10,8 @@ const pool = new GoogleGenAIPool(GoogleGenAI);
 const keys = (env.GEMINI_API_KEY || '')
 	.split(',')
 	.map((k) => k.trim())
-	.filter((k) => k);
+	.filter((k) => k)
+	.sort(() => Math.random() - 0.5);
 for (const key of keys) {
 	pool.add({
 		apiKey: key,
