@@ -15,7 +15,6 @@
 	import type { GradingJob } from '$lib/components/GradingQueue.svelte';
 	import { gradeWithSSE } from '$lib/sse-client';
 	import { Key, Cloud } from '@lucide/svelte';
-	import { P } from 'flowbite-svelte';
 
 	// Step tracking
 	let currentStep = $state<'upload' | 'student' | 'capture' | 'result'>('upload');
@@ -245,20 +244,17 @@
 			let errorMessage: string | null = null;
 
 			// Use SSE for grading
-			await gradeWithSSE(
-				'/api/grade',
-				{
-					questionSheetBase64,
-					imagesBase64,
-					proMode,
-					numRuns
-				},
-				{
+			await gradeWithSSE('/api/grade', {
+				questionSheetBase64,
+				imagesBase64,
+				proMode,
+				numRuns,
+				headers: {
 					...(useBYOKMode && clientApiKeyManager.apiKey
 						? { 'X-GOOG-API-KEY': clientApiKeyManager.apiKey }
 						: {})
 				},
-				{
+				handlers: {
 					onHeartbeat: (data) => {
 						console.log('Heartbeat:', new Date(data.timestamp).toISOString());
 					},
@@ -286,7 +282,7 @@
 						console.log('Grading completed');
 					}
 				}
-			);
+			});
 
 			if (errorMessage) {
 				throw new Error(errorMessage);
@@ -394,7 +390,7 @@
 </svelte:head>
 
 <div class="flex min-h-screen flex-col gap-2 bg-gradient-to-b from-blue-50 to-white p-4">
-	<div class="mx-auto max-w-2xl flex-1 w-full">
+	<div class="mx-auto w-full max-w-2xl flex-1">
 		<AppHeader resultsCount={allResults.length} onDownload={downloadResults} onReset={resetAll} />
 
 		<!-- API Key Manager -->
