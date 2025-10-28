@@ -51,10 +51,9 @@
 			const constraints: MediaStreamConstraints = {
 				video: selectedCameraId
 					? {
-							deviceId: { exact: selectedCameraId },
-							aspectRatio: { ideal: 9 / 16 }
+							deviceId: { exact: selectedCameraId }
 						}
-					: { facingMode: 'environment', aspectRatio: { ideal: 9 / 16 } }
+					: { facingMode: 'environment' }
 			};
 
 			const stream = await navigator.mediaDevices.getUserMedia(constraints);
