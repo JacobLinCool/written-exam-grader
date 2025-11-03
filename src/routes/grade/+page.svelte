@@ -244,17 +244,20 @@
 			let errorMessage: string | null = null;
 
 			// Use SSE for grading
-			await gradeWithSSE('/api/grade', {
-				questionSheetBase64,
-				imagesBase64,
-				proMode,
-				numRuns,
-				headers: {
+			await gradeWithSSE(
+				'/api/grade',
+				{
+					questionSheetBase64,
+					imagesBase64,
+					proMode,
+					numRuns
+				},
+				{
 					...(useBYOKMode && clientApiKeyManager.apiKey
 						? { 'X-GOOG-API-KEY': clientApiKeyManager.apiKey }
 						: {})
 				},
-				handlers: {
+				{
 					onHeartbeat: (data) => {
 						console.log('Heartbeat:', new Date(data.timestamp).toISOString());
 					},
@@ -282,7 +285,7 @@
 						console.log('Grading completed');
 					}
 				}
-			});
+			);
 
 			if (errorMessage) {
 				throw new Error(errorMessage);
